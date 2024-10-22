@@ -45,12 +45,31 @@ user_base <- tibble::tibble(
   breathing_duration = user_data_from_google$breathing_duration
 )
 
-
-# Save session data function
-saveSessionData <- function(data) {
-  data <- data.frame(data)
-  write_sheet(data, ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", sheet = "Data")
+# New save session data functions
+# Function to append session data to Google Sheet
+saveSessionData <- function(user, session_duration, total_time_spent, completed_sessions, session_started) {
+  new_row <- data.frame(
+    user = user,
+    session_duration = session_duration / 60,  # Convert to minutes
+    total_time_spent = total_time_spent / 60,  # Convert to minutes
+    completed_sessions = completed_sessions,
+    session_started = session_started,
+    timestamp = Sys.time()  # Add a timestamp for when the session was completed
+  )
+  
+  # Append the new row to the Google Sheet
+  sheet_append(
+    ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", 
+    data = new_row,
+    sheet = "New_data"
+  )
 }
+
+# # Save session data function
+# saveSessionData <- function(data) {
+#   data <- data.frame(data)
+#   sheet_append(data, ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", sheet = "Data")
+# }
 
 # Load existing session data from Google
 session_tracker <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", sheet = "Data", col_names = TRUE)
@@ -123,6 +142,7 @@ server <- function(input, output, session) {
   timer <- reactiveVal(default_breathingtime * 60)
   active <- reactiveVal(FALSE)
   session_start_time <- reactiveVal(0)  # Store the initial time when user starts
+  session_started <- reactiveVal(FALSE) # Initialize session_started variable
   
   # Time left output
   output$timeleft <- renderText({
@@ -133,6 +153,8 @@ server <- function(input, output, session) {
   observeEvent(input$start, {
     session_start_time(timer())  # Store initial time
     active(TRUE)  # Start timer
+    session_started(TRUE) #add a start variable for the fact that they started a session
+
   })
   
   # Observer for countdown and session tracking
@@ -141,6 +163,8 @@ server <- function(input, output, session) {
     isolate({
       if (active()) {
         timer(timer() - 1)
+        
+        
         if (timer() < 1) {
           active(FALSE)
           showModal(modalDialog(
@@ -151,18 +175,26 @@ server <- function(input, output, session) {
           # Get logged-in user's index
           user_index <- which(session_tracker$user == credentials()$info$user)
           
-          # Calculate session duration
+          # Calculate session duration (in seconds)
           session_duration <- session_start_time() - timer()
           
-          # Update session tracker
+          # Update session tracker values for the user
           session_tracker$completed_sessions[user_index] <- session_tracker$completed_sessions[user_index] + 1
-          session_tracker$total_time_spent[user_index] <- (session_tracker$total_time_spent[user_index] + session_duration) / 60
+          session_tracker$total_time_spent[user_index] <- session_tracker$total_time_spent[user_index] + session_duration
           
-          # Save updated session data
-          saveSessionData(session_tracker)
+          # Extract relevant session data
+          user <- credentials()$info$user
+          total_time_spent <- session_tracker$total_time_spent[user_index]
+          completed_sessions <- session_tracker$completed_sessions[user_index]
           
-          # print for debugging
+          # Save the updated session data as a new row in the Google Sheet, including if the session was started
+          saveSessionData(user, session_duration, total_time_spent, completed_sessions, session_started())
+          
+          # Print for debugging
           print(session_tracker)
+          
+          # Reset session started status
+          session_started(FALSE) 
         }
       }
     })
