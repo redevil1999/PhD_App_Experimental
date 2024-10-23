@@ -72,7 +72,7 @@ saveSessionData <- function(user, session_duration, total_time_spent, completed_
 # }
 
 # Load existing session data from Google
-session_tracker <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", sheet = "Data", col_names = TRUE)
+session_tracker <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", sheet = "New_data", col_names = TRUE)
 session_tracker <- as_tibble(session_tracker)  # Ensure it's a tibble for consistency
 
 
@@ -179,17 +179,18 @@ server <- function(input, output, session) {
           session_duration <- session_start_time() - timer()
           
           # Update session tracker values for the user
-          session_tracker$completed_sessions[user_index] <- session_tracker$completed_sessions[user_index] + 1
-          session_tracker$total_time_spent[user_index] <- session_tracker$total_time_spent[user_index] + session_duration
+          session_tracker$completed_sessions[user_index] <- 1
+          session_tracker$total_time_spent[user_index] <- session_duration
+          
           
           # Extract relevant session data
           user <- credentials()$info$user
           total_time_spent <- session_tracker$total_time_spent[user_index]
           completed_sessions <- session_tracker$completed_sessions[user_index]
-          
+
           # Save the updated session data as a new row in the Google Sheet, including if the session was started
           saveSessionData(user, session_duration, total_time_spent, completed_sessions, session_started())
-          
+
           # Print for debugging
           print(session_tracker)
           
@@ -202,13 +203,39 @@ server <- function(input, output, session) {
   
   # Render session count for logged-in user
   output$session_count <- renderTable({
-    req(credentials()$user_auth)
+    req(credentials()$user_auth)  # Ensure user is authenticated
     
-    # Filter session tracker for logged-in user
-    session_tracker %>%
-      filter(user == credentials()$info$user) %>%
-      mutate(total_time_spent = total_time_spent / 60)  # Convert seconds to period
+    # Retrieve user data from session tracker
+    user_data <- session_tracker %>%
+      filter(user == credentials()$info$user)
+    
+    # Check if the user exists in the session tracker
+    if (nrow(user_data) > 0) {
+      # If the user exists, extract total_time_spent and completed_sessions
+      total_time_spent <- sum(user_data$total_time_spent)
+      completed_sessions <- sum(user_data$completed_sessions)
+    } else {
+      # If user doesn't exist, set default values
+      total_time_spent <- 0
+      completed_sessions <- 0
+      
+      # Optionally, initialize new user data (uncomment if needed)
+      # new_user <- tibble(
+      #   user = credentials()$info$user,
+      #   total_time_spent = 0,
+      #   completed_sessions = 0
+      # )
+      # session_tracker <- bind_rows(session_tracker, new_user)
+    }
+    
+    # Create a summary table to display user session data
+    tibble(
+      User = credentials()$info$user,
+      Total_Time_Spent_Minutes = total_time_spent,  # Convert seconds to minutes
+      Completed_Sessions = completed_sessions
+    )
   })
+  
   
   # Action button observers
   observeEvent(input$stop, { active(FALSE) })
