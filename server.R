@@ -179,14 +179,14 @@ server <- function(input, output, session) {
           session_duration <- session_start_time() - timer()
           
           # Update session tracker values for the user
-          session_tracker$completed_sessions[user_index] <- 1
-          session_tracker$total_time_spent[user_index] <- session_duration
+          completed_sessions <- 1
+          total_time_spent <- session_duration
           
           
           # Extract relevant session data
           user <- credentials()$info$user
-          total_time_spent <- session_tracker$total_time_spent[user_index]
-          completed_sessions <- session_tracker$completed_sessions[user_index]
+          # total_time_spent <- session_tracker$total_time_spent[user_index]
+          # completed_sessions <- session_tracker$completed_sessions[user_index]
 
           # Save the updated session data as a new row in the Google Sheet, including if the session was started
           saveSessionData(user, session_duration, total_time_spent, completed_sessions, session_started())
@@ -212,20 +212,13 @@ server <- function(input, output, session) {
     # Check if the user exists in the session tracker
     if (nrow(user_data) > 0) {
       # If the user exists, extract total_time_spent and completed_sessions
-      total_time_spent <- sum(user_data$total_time_spent)
+      total_time_spent <- sum(user_data$session_duration)
       completed_sessions <- sum(user_data$completed_sessions)
     } else {
       # If user doesn't exist, set default values
       total_time_spent <- 0
       completed_sessions <- 0
       
-      # Optionally, initialize new user data (uncomment if needed)
-      # new_user <- tibble(
-      #   user = credentials()$info$user,
-      #   total_time_spent = 0,
-      #   completed_sessions = 0
-      # )
-      # session_tracker <- bind_rows(session_tracker, new_user)
     }
     
     # Create a summary table to display user session data
