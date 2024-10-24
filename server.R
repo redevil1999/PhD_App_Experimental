@@ -112,9 +112,9 @@ server <- function(input, output, session) {
     
     navbarPage('NTNU',
                tabPanel('Coherence Breathing',
-                        sidebarLayout(
-                          sidebarPanel(paste("Hello", credentials()$info$name, "Welcome to the guided breathing! The pace of this breathing is set to what was measured in the lab. Remember to inhale as the circle expands and exhale as it contracts."),
-                          ),
+                        paste("Hello", credentials()$info$name, "Welcome to the guided breathing!"),
+                        p("The pace of this breathing is set to what was measured in the lab."),
+                          p("Remember to inhale as the circle expands and exhale as it contracts."),
                           mainPanel(plotOutput("distPlot"),
                                     hr(),
                                     actionButton('start', 'Start'),
@@ -128,7 +128,6 @@ server <- function(input, output, session) {
                                           
                                           Information for piloting: please let me know by sending a quick message if you change the duration (e.g. instead of breathing for 5 minutes, you decide to breathe for 10 minutes or 1 minute). 
                                           Also, just inform me about your experiences with the app - does it work well for you, did things not work, just your general experience. The app is obviously not ready yet, that's why I'm piloting it :)"))
-                        )
                ),
                tabPanel('Session Completion',
                         # Display session count for logged-in user
@@ -169,7 +168,7 @@ server <- function(input, output, session) {
           active(FALSE)
           showModal(modalDialog(
             title = "Important message",
-            "Countdown completed!"
+            "Session completed! The session tracker will update the next time you log in."
           ))
           
           # Get logged-in user's index

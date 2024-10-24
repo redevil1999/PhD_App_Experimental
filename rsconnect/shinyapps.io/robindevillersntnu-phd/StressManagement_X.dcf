@@ -1,11 +1,11 @@
 name: StressManagement_X
-title: StressManagement_X
+title: PhD_App_Experimental
 username: robindevillersntnu-phd
 account: robindevillersntnu-phd
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 13105083
-bundleId: 9259208
+bundleId: 9259565
 url: https://robindevillersntnu-phd.shinyapps.io/StressManagement_X/
 version: 1
 asMultiple: FALSE
