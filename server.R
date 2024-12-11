@@ -103,7 +103,7 @@ server <- function(input, output, session) {
   
   
   # Default breathing time
-  default_breathingtime <- 5
+  default_breathingtime <- 10
   
   # UI for logged-in users
   output$sidebarpanel <- renderUI({
