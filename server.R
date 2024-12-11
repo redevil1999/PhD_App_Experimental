@@ -122,12 +122,7 @@ server <- function(input, output, session) {
                                     actionButton('reset', 'Reset'),
                                     numericInput('minutes', 'Minutes:', value = default_breathingtime, min = 0, max = 99999, step = 1),
                                     textOutput('timeleft'),
-                                    paste("If you would like to change the duration, remember to press reset after entering a different number.
-                                          
-                                          The app is a bit slow btw. 
-                                          
-                                          Information for piloting: please let me know by sending a quick message if you change the duration (e.g. instead of breathing for 5 minutes, you decide to breathe for 10 minutes or 1 minute). 
-                                          Also, just inform me about your experiences with the app - does it work well for you, did things not work, just your general experience. The app is obviously not ready yet, that's why I'm piloting it :)"))
+                                    paste("If you would like to change the duration, remember to press reset after entering a different number."))
                ),
                tabPanel('Session Completion',
                         # Display session count for logged-in user
