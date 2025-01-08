@@ -7,73 +7,10 @@ library(gganimate)
 library(ggforce)
 library(gifski)
 library(lubridate)
-library(shinyauthr)
 library(rsconnect)
 library(googlesheets4)
 library(googledrive)
 
-# # dataframe that holds usernames, passwords, and other user data
-# user_base <- tibble::tibble(
-#   user = c("user1", "user2"),
-#   password = sapply(c("pass1", "pass2"), sodium::password_store),
-#   permissions = c("admin", "standard"),
-#   name = c("User One", "User Two"),
-#   breathing_duration = c(10, 15)
-# )
-
-# interactive, generates token
-#options(gargle_oauth_cache = ".secrets")
-#googledrive::drive_auth()
-
-# non-interactive
-googledrive::drive_auth(cache = ".secrets", email = "re.devillers1999@gmail.com")
-googlesheets4::gs4_auth(token = drive_token(), email = TRUE)
-
-# Load existing user data from Google Sheet
-user_data_from_google <- read_sheet(
-  ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing",
-  sheet = "Users",
-  col_names = TRUE
-)
-
-# Convert passwords to hashed versions if they are plain text
-user_base <- tibble::tibble(
-  user = user_data_from_google$user,
-  password = sapply(user_data_from_google$password, sodium::password_store), # Hashes passwords
-  permissions = user_data_from_google$permissions,
-  name = user_data_from_google$name,
-  breathing_duration = user_data_from_google$breathing_duration
-)
-
-# New save session data functions
-# Function to append session data to Google Sheet
-saveSessionData <- function(user, session_duration, total_time_spent, completed_sessions, session_started) {
-  new_row <- data.frame(
-    user = user,
-    session_duration = session_duration / 60,  # Convert to minutes
-    total_time_spent = total_time_spent / 60,  # Convert to minutes
-    completed_sessions = completed_sessions,
-    session_started = session_started,
-    timestamp = Sys.time()  # Add a timestamp for when the session was completed
-  )
-  
-  # Append the new row to the Google Sheet
-  sheet_append(
-    ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", 
-    data = new_row,
-    sheet = "New_data"
-  )
-}
-
-# # Save session data function
-# saveSessionData <- function(data) {
-#   data <- data.frame(data)
-#   sheet_append(data, ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", sheet = "Data")
-# }
-
-# Load existing session data from Google
-session_tracker <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1ZfrZlrSlvWupOObvCFwWH06nULWElCXzHnxBbBqTfeU/edit?usp=sharing", sheet = "New_data", col_names = TRUE)
-session_tracker <- as_tibble(session_tracker)  # Ensure it's a tibble for consistency
 
 
 # data for the breathing guidance
@@ -84,22 +21,8 @@ breathing_circle_data <- data.frame(
   speed_maybe = c(1:24)
 )
 
+
 server <- function(input, output, session) {
-  
-  credentials <- shinyauthr::loginServer(
-    id = "login",
-    data = user_base,
-    user_col = user,
-    pwd_col = password,
-    sodium_hashed = TRUE,
-    log_out = reactive(logout_init())
-  )
-  
-  # Logout to hide
-  logout_init <- shinyauthr::logoutServer(
-    id = "logout",
-    active = reactive(credentials()$user_auth)
-  )
   
   
   # Default breathing time
@@ -107,12 +30,12 @@ server <- function(input, output, session) {
   
   # UI for logged-in users
   output$sidebarpanel <- renderUI({
-    req(credentials()$user_auth)
-    column(width = 4, p(paste("You have", credentials()$info[["permissions"]], "permission")))
+    #req(credentials()$user_auth)
+    #column(width = 4, p(paste("You have", credentials()$info[["permissions"]], "permission")))
     
     navbarPage('NTNU',
-               tabPanel('Coherence Breathing',
-                        paste("Hello", credentials()$info$name, "Welcome to the guided breathing!"),
+               tabPanel('Guided Breathing',
+                        paste("Hello!", "Welcome to the guided breathing!"),
                         p("The pace of this breathing is set to what was measured in the lab."),
                           p("Remember to inhale as the circle expands and exhale as it contracts."),
                           mainPanel(plotOutput("distPlot"),
@@ -122,13 +45,9 @@ server <- function(input, output, session) {
                                     actionButton('reset', 'Reset'),
                                     numericInput('minutes', 'Minutes:', value = default_breathingtime, min = 0, max = 99999, step = 1),
                                     textOutput('timeleft'),
-                                    paste("If you would like to change the duration, remember to press reset after entering a different number."))
-               ),
-               tabPanel('Session Completion',
-                        # Display session count for logged-in user
-                        tableOutput("session_count"),
-                        paste("This table displays the number of completed sessions and the total amount of time you have spend on the sessions from the stress management tool.
-                              It updates with every new login."))
+                                    paste("If you would like to change the duration, remember to press reset after entering a different number."),
+                                    tags$a(href = "https://nettskjema.no/a/481084", "Please fill out this short questionnaire to confirm that you have completed a session", target = "_blank"))
+               )
     )
   })
   
@@ -166,63 +85,12 @@ server <- function(input, output, session) {
             "Session completed! The session tracker will update the next time you log in."
           ))
           
-          # Get logged-in user's index
-          user_index <- which(session_tracker$user == credentials()$info$user)
-          
-          # Calculate session duration (in seconds)
-          session_duration <- session_start_time() - timer()
-          
-          # Update session tracker values for the user
-          completed_sessions <- 1
-          total_time_spent <- session_duration
-          
-          
-          # Extract relevant session data
-          user <- credentials()$info$user
-          # total_time_spent <- session_tracker$total_time_spent[user_index]
-          # completed_sessions <- session_tracker$completed_sessions[user_index]
-
-          # Save the updated session data as a new row in the Google Sheet, including if the session was started
-          saveSessionData(user, session_duration, total_time_spent, completed_sessions, session_started())
-
-          # Print for debugging
-          print(session_tracker)
-          
-          # Reset session started status
-          session_started(FALSE) 
         }
       }
     })
   })
   
-  # Render session count for logged-in user
-  output$session_count <- renderTable({
-    req(credentials()$user_auth)  # Ensure user is authenticated
-    
-    # Retrieve user data from session tracker
-    user_data <- session_tracker %>%
-      filter(user == credentials()$info$user)
-    
-    # Check if the user exists in the session tracker
-    if (nrow(user_data) > 0) {
-      # If the user exists, extract total_time_spent and completed_sessions
-      total_time_spent <- sum(user_data$session_duration)
-      completed_sessions <- sum(user_data$completed_sessions)
-    } else {
-      # If user doesn't exist, set default values
-      total_time_spent <- 0
-      completed_sessions <- 0
-      
-    }
-    
-    # Create a summary table to display user session data
-    tibble(
-      User = credentials()$info$user,
-      Total_Time_Spent_Minutes = total_time_spent,  # Convert seconds to minutes
-      Completed_Sessions = completed_sessions
-    )
-  })
-  
+
   
   # Action button observers
   observeEvent(input$stop, { active(FALSE) })
@@ -231,17 +99,12 @@ server <- function(input, output, session) {
   # Plot
   output$distPlot <- renderImage({
     
-    # Show plot only when authenticated
-    req(credentials()$user_auth)
-    
-    # participants' individual breathing duration
-    participant_breathingduration <- credentials()$info$breathing_duration
-    print(participant_breathingduration)
     
     # create a temporary file
     outfile <- tempfile(fileext = '.gif')
     
     # make the animation
+    
     Breathing_Circle <- ggplot() +
       geom_circle(data = breathing_circle_data, mapping = aes(x0 = x0, y0 = y0, r = r, col = r, fill = r), show.legend = FALSE) +
       theme(axis.line=element_blank(),axis.text.x=element_blank(),
@@ -260,7 +123,7 @@ server <- function(input, output, session) {
     
 
     # save the animation
-    animate(Breathing_Circle, nframes = 200, renderer = gifski_renderer('outfile.gif'), duration = participant_breathingduration)
+    animate(Breathing_Circle, nframes = 200, renderer = gifski_renderer('outfile.gif'), duration = 10)
     
     # Return a list containing the filename
     list(src = "outfile.gif",
