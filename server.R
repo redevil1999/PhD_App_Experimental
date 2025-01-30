@@ -10,6 +10,7 @@ library(lubridate)
 library(rsconnect)
 library(googlesheets4)
 library(googledrive)
+library(viridis)
 
 
 
@@ -17,7 +18,7 @@ library(googledrive)
 breathing_circle_data <- data.frame(
   x0 = c(5, each = 5),
   y0 = c(5, each = 5),
-  r = c(0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0.5, 0.2),
+  r = c(0.2, 0.5, 1.25, 2.5, 3.75, 5, 7.5, 8.75, 10, 10, 10, 10, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0.5, 0.2),
   speed_maybe = c(1:24)
 )
 
@@ -107,6 +108,7 @@ server <- function(input, output, session) {
     
     Breathing_Circle <- ggplot() +
       geom_circle(data = breathing_circle_data, mapping = aes(x0 = x0, y0 = y0, r = r, col = r, fill = r), show.legend = FALSE) +
+      scale_fill_viridis(option = "mako") +
       theme(axis.line=element_blank(),axis.text.x=element_blank(),
             axis.text.y=element_blank(),axis.ticks=element_blank(),
             axis.title.x=element_blank(),
@@ -123,7 +125,7 @@ server <- function(input, output, session) {
     
 
     # save the animation
-    animate(Breathing_Circle, nframes = 200, renderer = gifski_renderer('outfile.gif'), duration = 10)
+    animate(Breathing_Circle, nframes = 200, renderer = gifski_renderer('outfile.gif'), duration = 12)
     
     # Return a list containing the filename
     list(src = "outfile.gif",
